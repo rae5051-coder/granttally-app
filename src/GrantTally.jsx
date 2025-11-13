@@ -31,15 +31,14 @@ import {
 // --------------------------------------------
 // Supabase client (vite-style envs). If not present, component falls back to mock data only.
 // --------------------------------------------
-let supabase = null;
-try {
-  const { createClient } = await import("@supabase/supabase-js");
-  const url = import.meta?.env?.VITE_SUPABASE_URL;
-  const key = import.meta?.env?.VITE_SUPABASE_ANON_KEY;
-  if (url && key) supabase = createClient(url, key);
-} catch (e) {
-  // ignore in preview envs
-}
+import { createClient } from "@supabase/supabase-js";
+   
+   const url = import.meta?.env?.VITE_SUPABASE_URL;
+   const key = import.meta?.env?.VITE_SUPABASE_ANON_KEY;
+   let supabase = null;
+   if (url && key) {
+     supabase = createClient(url, key);
+   }
 
 const MOCK_USER = {
   id: "demo-user-1",
