@@ -397,6 +397,123 @@ export default function GrantTally() {
     setShowFinancingOptions(true);
   };
 
+// Fetch real grants from Grants.gov API v2
+  const fetchFederalGrants = async () => {
+    try {
+      setLoadingOpps(true);
+      setError(null);
+      
+      console.log('🔍 Fetching real grants from Grants.gov...');
+      
+      // Grants.gov API v2 - NO API KEY NEEDED!
+      const response = await fetch('https://www.grants.gov/grantsws/rest/opportunities/search/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          keyword: 'business',
+          sortBy: 'openDate|desc',
+          rows: 20,
+          oppStatuses: 'forecasted|posted'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📦 Raw API response:', data);
+      
+      // Parse Grants.gov response
+      if (data && data.opportunitiesList) {
+        const newGrants = data.opportunitiesList.map((grant, index) => ({
+          id: `grants-gov-${grant.opportunityID || Date.now() + index}`,
+          title: grant.opportunityTitle || 'Federal Grant Opportunity',
+          type: 'grant',
+          category: 'business',
+          amount: grant.awardCeiling ? `Up to $${parseInt(grant.awardCeiling).toLocaleString()}` : 'Amount varies',
+          provider: grant.agencyName || grant.agencyCode || 'Federal Agency',
+          deadline: grant.closeDate ? new Date(grant.closeDate).toLocaleDateString() : 'Check official site',
+          location: 'Nationwide',
+          scope: 'national',
+          description: grant.description || grant.opportunityTitle || 'Federal grant opportunity',
+          approvalRate: 'Varies',
+          processingTime: '60-120 days',
+          matchScore: 85
+        }));
+        
+        console.log('✅ Parsed', newGrants.length, 'grants');
+        
+        // Add to existing grants
+        setOpps(prev => [...prev, ...newGrants]);
+        
+        alert(`✅ Loaded ${newGrants.length} REAL federal grants from Grants.gov!`);
+      } else {
+        throw new Error('No grants found in response');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fetching from Grants.gov:', error);
+      
+      // Fallback to mock data if API fails
+      console.log('⚠️ Using fallback grants...');
+      
+      const fallbackGrants = [
+        {
+          id: `fallback-${Date.now()}-1`,
+          title: "SBA Small Business Innovation Research (SBIR)",
+          type: "grant",
+          category: "business",
+          amount: "$50,000 - $1,500,000",
+          provider: "U.S. Small Business Administration",
+          deadline: "Rolling",
+          location: "Nationwide",
+          scope: "national",
+          description: "Federal funding for small businesses conducting R&D with commercial potential.",
+          approvalRate: "25%",
+          processingTime: "90 days",
+          matchScore: 90
+        },
+        {
+          id: `fallback-${Date.now()}-2`,
+          title: "Department of Energy Clean Energy Grant",
+          type: "grant",
+          category: "business",
+          amount: "$100,000 - $500,000",
+          provider: "U.S. Department of Energy",
+          deadline: "June 30, 2026",
+          location: "Nationwide",
+          scope: "national",
+          description: "Grants for businesses developing clean energy solutions.",
+          approvalRate: "32%",
+          processingTime: "90-120 days",
+          matchScore: 85
+        },
+        {
+          id: `fallback-${Date.now()}-3`,
+          title: "USDA Rural Business Grant",
+          type: "grant",
+          category: "business",
+          amount: "$10,000 - $500,000",
+          provider: "U.S. Department of Agriculture",
+          deadline: "March 15, 2026",
+          location: "Rural Areas",
+          scope: "national",
+          description: "Grants for businesses in rural areas.",
+          approvalRate: "45%",
+          processingTime: "60-90 days",
+          matchScore: 78
+        }
+      ];
+      
+      setOpps(prev => [...prev, ...fallbackGrants]);
+      alert(`⚠️ Using sample grants. API error: ${error.message}`);
+    } finally {
+      setLoadingOpps(false);
+    }
+  };
   // --------------------------------------------
   // Views
   // --------------------------------------------
@@ -420,6 +537,7 @@ export default function GrantTally() {
           loading={loadingOpps}
           error={error}
           onApply={startGuidedApply}
+          onLoadGrants={fetchFederalGrants} 
         />
       )}
 
@@ -589,7 +707,7 @@ function Home({ onCta, onSignup, onPricing, isLoggedIn }) {
   );
 }
 
-function SearchView({ isLoggedIn, user, items, q, setQ, type, setType, loading, error, onApply }) {
+function SearchView({ isLoggedIn, user, items, q, setQ, type, setType, loading, error, onApply, onLoadGrants }) {
   return (
     <div>
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-12">
@@ -607,6 +725,12 @@ function SearchView({ isLoggedIn, user, items, q, setQ, type, setType, loading, 
               <option value="loan">Loans</option>
               <option value="scholarship">Scholarships</option>
             </select>
+            <button
+            onClick={onLoadGrants}
+            className="bg-green-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-700 transition shadow-lg"
+          >
+            🔄 Load Federal Grants
+          </button>
           </div>
         </div>
       </div>
